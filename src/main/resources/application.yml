@@ -2,6 +2,21 @@ spring:
   application:
     name: audience-checkout-bff
 
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/checkout_db}
+    username: ${DB_USERNAME:checkout}
+    password: ${DB_PASSWORD:checkout}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
 server:
   port: 8080
 
