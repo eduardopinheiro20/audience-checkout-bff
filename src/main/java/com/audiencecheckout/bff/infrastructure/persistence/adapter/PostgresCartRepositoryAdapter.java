@@ -9,6 +9,7 @@ import com.audiencecheckout.bff.infrastructure.persistence.entity.CartPaymentMet
 import com.audiencecheckout.bff.infrastructure.persistence.entity.CartProductEntity;
 import com.audiencecheckout.bff.infrastructure.persistence.repository.SpringDataCartRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -23,8 +24,14 @@ public class PostgresCartRepositoryAdapter implements CartRepositoryPort {
     }
 
     @Override
+    @Transactional
     public Cart save(Cart cart) {
-        var entity = toEntity(cart);
+        var entity = repository.findById(cart.id())
+                .map(existingEntity -> {
+                    existingEntity.changeStatus(cart.status());
+                    return existingEntity;
+                })
+                .orElseGet(() -> toEntity(cart));
 
         var savedEntity = repository.save(entity);
 
@@ -32,6 +39,7 @@ public class PostgresCartRepositoryAdapter implements CartRepositoryPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Cart> findById(UUID cartId) {
         return repository.findById(cartId)
                 .map(this::toDomain);
