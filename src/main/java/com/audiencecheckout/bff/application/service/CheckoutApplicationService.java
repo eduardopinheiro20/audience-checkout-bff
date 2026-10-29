@@ -13,6 +13,7 @@ import com.audiencecheckout.bff.application.exception.CartNotFoundException;
 import com.audiencecheckout.bff.application.exception.PaymentDeclinedException;
 import com.audiencecheckout.bff.application.exception.PaymentMethodNotAllowedException;
 import com.audiencecheckout.bff.application.exception.ProductNotFoundException;
+import com.audiencecheckout.bff.application.exception.InvalidCardDataException;
 import com.audiencecheckout.bff.domain.model.Cart;
 import com.audiencecheckout.bff.domain.model.PaymentMethod;
 import com.audiencecheckout.bff.domain.model.Product;
@@ -78,7 +79,7 @@ public class CheckoutApplicationService {
         validatePaymentMethod(cart, request);
 
         if (isCardPayment(request.paymentMethod().name())) {
-            validateCardData(request);
+            validateCardData(cart, request);
             validateCardApproval(cart, request);
         }
 
@@ -105,10 +106,7 @@ public class CheckoutApplicationService {
         }
     }
 
-    private void validatePaymentMethod(
-            Cart cart,
-            CheckoutRequest request
-    ) {
+    private void validatePaymentMethod(Cart cart, CheckoutRequest request) {
         var paymentMethod = request.paymentMethod();
 
         if (paymentMethod == null
@@ -128,17 +126,23 @@ public class CheckoutApplicationService {
                 || DEBIT_CARD.equalsIgnoreCase(paymentMethod);
     }
 
-    private void validateCardData(CheckoutRequest request) {
+    private void validateCardData(Cart cart, CheckoutRequest request) {
         var card = request.paymentMethod().card();
 
         if (card == null
-                || card.number() == null
-                || card.number().isBlank()) {
+                || isBlank(card.holderName())
+                || isBlank(card.number())
+                || isBlank(card.expiry())
+                || isBlank(card.cvv())) {
 
-            throw new IllegalArgumentException(
-                    "Card data is required for card payments"
+            throw new InvalidCardDataException(
+                    cart.id()
             );
         }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private void validateCardApproval(
@@ -158,10 +162,7 @@ public class CheckoutApplicationService {
         }
     }
 
-    private CheckoutResponse buildCheckoutResponse(
-            Cart cart,
-            CheckoutRequest request
-    ) {
+    private CheckoutResponse buildCheckoutResponse(Cart cart, CheckoutRequest request) {
         var paymentMethod = request.paymentMethod().name();
 
         var amount = calculateTotal(cart.products());

@@ -8,6 +8,7 @@ import com.audiencecheckout.bff.application.exception.CartNotFoundException;
 import com.audiencecheckout.bff.application.exception.PaymentDeclinedException;
 import com.audiencecheckout.bff.application.exception.PaymentMethodNotAllowedException;
 import com.audiencecheckout.bff.application.exception.ProductNotFoundException;
+import com.audiencecheckout.bff.application.exception.InvalidCardDataException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -142,6 +143,31 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
+
+    @ExceptionHandler(InvalidCardDataException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidCardData(
+            InvalidCardDataException exception
+    ) {
+        var response = new ApiErrorResponse(
+                "BLOCK",
+                "INVALID_CARD_DATA",
+                exception.getCartId(),
+                new FrontendErrorResponse(
+                        "P-1005",
+                        "Invalid card data",
+                        "The card information is incomplete or invalid.",
+                        new ErrorButtonResponse(
+                                "Review card data",
+                                "RETRY"
+                        ),
+                        null
+                )
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .body(response);
     }
 }

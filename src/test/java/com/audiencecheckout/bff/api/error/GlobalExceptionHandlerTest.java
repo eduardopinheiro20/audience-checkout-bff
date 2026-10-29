@@ -1,10 +1,6 @@
 package com.audiencecheckout.bff.api.error;
 
-import com.audiencecheckout.bff.application.exception.CartAlreadyApprovedException;
-import com.audiencecheckout.bff.application.exception.CartNotFoundException;
-import com.audiencecheckout.bff.application.exception.PaymentDeclinedException;
-import com.audiencecheckout.bff.application.exception.PaymentMethodNotAllowedException;
-import com.audiencecheckout.bff.application.exception.ProductNotFoundException;
+import com.audiencecheckout.bff.application.exception.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
@@ -256,6 +252,65 @@ class GlobalExceptionHandlerTest {
         assertEquals(
                 "Payment already completed",
                 body.frontendError().title()
+        );
+    }
+
+    @Test
+    void shouldHandleInvalidCardData() {
+        var cartId = UUID.randomUUID();
+
+        var exception =
+                new InvalidCardDataException(cartId);
+
+        var response =
+                handler.handleInvalidCardData(exception);
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                response.getStatusCode()
+        );
+
+        assertNotNull(response.getBody());
+
+        var body = response.getBody();
+
+        assertEquals(
+                "BLOCK",
+                body.displayType()
+        );
+
+        assertEquals(
+                "INVALID_CARD_DATA",
+                body.errorCode()
+        );
+
+        assertEquals(
+                cartId,
+                body.cartId()
+        );
+
+        assertEquals(
+                "P-1005",
+                body.frontendError().code()
+        );
+
+        assertEquals(
+                "Invalid card data",
+                body.frontendError().title()
+        );
+
+        assertEquals(
+                "Review card data",
+                body.frontendError()
+                        .primaryButton()
+                        .label()
+        );
+
+        assertEquals(
+                "RETRY",
+                body.frontendError()
+                        .primaryButton()
+                        .url()
         );
     }
 }

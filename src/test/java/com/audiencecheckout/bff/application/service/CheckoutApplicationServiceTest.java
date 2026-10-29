@@ -5,11 +5,7 @@ import com.audiencecheckout.bff.api.dto.request.CheckoutRequest;
 import com.audiencecheckout.bff.api.dto.request.PaymentMethodRequest;
 import com.audiencecheckout.bff.api.dto.request.PreCheckoutRequest;
 import com.audiencecheckout.bff.api.dto.request.ProductSelectionRequest;
-import com.audiencecheckout.bff.application.exception.CartAlreadyApprovedException;
-import com.audiencecheckout.bff.application.exception.CartNotFoundException;
-import com.audiencecheckout.bff.application.exception.PaymentDeclinedException;
-import com.audiencecheckout.bff.application.exception.PaymentMethodNotAllowedException;
-import com.audiencecheckout.bff.application.exception.ProductNotFoundException;
+import com.audiencecheckout.bff.application.exception.*;
 import com.audiencecheckout.bff.domain.model.Cart;
 import com.audiencecheckout.bff.domain.model.PaymentMethod;
 import com.audiencecheckout.bff.domain.model.Product;
@@ -314,6 +310,53 @@ class CheckoutApplicationServiceTest {
                 response.payment()
                         .pixCode()
                         .startsWith("PIX-")
+        );
+    }
+
+    @Test
+    void shouldThrowWhenCardDataIsMissing() {
+        var cart = createCart();
+
+        var request = new CheckoutRequest(
+                cart.id(),
+                new PaymentMethodRequest(
+                        "Credit Card",
+                        null
+                )
+        );
+
+        when(cartRepositoryPort.findById(cart.id()))
+                .thenReturn(Optional.of(cart));
+
+        assertThrows(
+                InvalidCardDataException.class,
+                () -> service.checkout(request)
+        );
+    }
+
+    @Test
+    void shouldThrowWhenCardDataIsIncomplete() {
+        var cart = createCart();
+
+        var request = new CheckoutRequest(
+                cart.id(),
+                new PaymentMethodRequest(
+                        "Credit Card",
+                        new CardRequest(
+                                "",
+                                "4111111111114242",
+                                "12/28",
+                                "123"
+                        )
+                )
+        );
+
+        when(cartRepositoryPort.findById(cart.id()))
+                .thenReturn(Optional.of(cart));
+
+        assertThrows(
+                InvalidCardDataException.class,
+                () -> service.checkout(request)
         );
     }
 
