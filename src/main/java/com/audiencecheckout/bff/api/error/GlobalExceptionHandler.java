@@ -9,13 +9,23 @@ import com.audiencecheckout.bff.application.exception.PaymentDeclinedException;
 import com.audiencecheckout.bff.application.exception.PaymentMethodNotAllowedException;
 import com.audiencecheckout.bff.application.exception.ProductNotFoundException;
 import com.audiencecheckout.bff.application.exception.InvalidCardDataException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import java.util.stream.Collectors;
 
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.audiencecheckout.bff.api.controller")
 public class GlobalExceptionHandler {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ProductNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleProductNotFound(
@@ -169,5 +179,93 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(response);
+    }
+
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidation(
+            MethodArgumentNotValidException exception
+    ) {
+        var fields = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(FieldError::getField)
+                .distinct()
+                .collect(Collectors.joining(", "));
+
+        return invalidRequest(
+                "INVALID_REQUEST",
+                "P-9000",
+                "Invalid request",
+                "The request has missing or invalid fields: " + fields + "."
+        );
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnreadableBody(
+            HttpMessageNotReadableException exception
+    ) {
+        return invalidRequest(
+                "MALFORMED_REQUEST",
+                "P-9001",
+                "Malformed request",
+                "The request body is missing or is not a valid JSON."
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleUnexpected(
+            Exception exception
+    ) {
+
+        if (exception instanceof ErrorResponse errorResponse) {
+            return ResponseEntity
+                    .status(errorResponse.getStatusCode())
+                    .body(buildError(
+                            "REQUEST_NOT_SUPPORTED",
+                            "P-9002",
+                            "Request not supported",
+                            "The request could not be processed."
+                    ));
+        }
+
+        log.error("Unexpected error: {}", exception.getClass().getName(), exception);
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(buildError(
+                        "UNEXPECTED_ERROR",
+                        "P-9999",
+                        "Something went wrong",
+                        "We could not complete your request. Please try again."
+                ));
+    }
+
+    private ResponseEntity<ApiErrorResponse> invalidRequest(
+            String errorCode, String code, String title, String description
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(buildError(errorCode, code, title, description));
+    }
+
+    private ApiErrorResponse buildError(
+            String errorCode, String code, String title, String description
+    ) {
+        return new ApiErrorResponse(
+                "BLOCK",
+                errorCode,
+                null,
+                new FrontendErrorResponse(
+                        code,
+                        title,
+                        description,
+                        new ErrorButtonResponse(
+                                "Back to checkout",
+                                "/checkout/payment"
+                        ),
+                        null
+                )
+        );
     }
 }

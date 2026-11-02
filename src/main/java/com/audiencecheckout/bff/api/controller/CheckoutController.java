@@ -35,7 +35,7 @@ public class CheckoutController {
 
     @PostMapping("/checkout")
     public ResponseEntity<CheckoutResponse> checkout(
-            @RequestBody CheckoutRequest request
+            @Valid @RequestBody CheckoutRequest request
     ) {
         var response = checkoutApplicationService.checkout(request);
 
